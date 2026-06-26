@@ -88,6 +88,47 @@ export async function validateUserCredentials(
 ): Promise<LoginResult | null> {
   const identifier = loginIdentifier.trim();
   const trimmedPass = password.trim();
+
+  // Try matching against sal_employee first (for mobile/employee logins)
+  const empResults = await db
+    .select()
+    .from(salEmployee)
+    .where(
+      or(
+        sql`lower(trim(${salEmployee.username})) = lower(${identifier})`,
+        sql`lower(trim(${salEmployee.emp_code})) = lower(${identifier})`
+      )
+    )
+    .limit(1);
+
+  const employee = empResults[0];
+  if (employee) {
+    let isPasswordMatch = false;
+    if (employee.password) {
+      const dbPasswordTrimmed = employee.password.trim();
+      try {
+        isPasswordMatch = await bcrypt.compare(trimmedPass, dbPasswordTrimmed);
+      } catch {
+        isPasswordMatch = dbPasswordTrimmed === trimmedPass;
+      }
+      if (!isPasswordMatch && !dbPasswordTrimmed.startsWith('$2')) {
+        isPasswordMatch = dbPasswordTrimmed === trimmedPass;
+      }
+    }
+
+    if (isPasswordMatch) {
+      return {
+        user: {
+          ...employee,
+          pk_user_id: employee.pk_emp_id,
+          fk_emp_id: employee.pk_emp_id,
+        },
+        role: 'sal_employee',
+      };
+    }
+  }
+
+  // Fallback to app_user (for admin/book logins)
   const phoneDigits = getPhoneDigits(identifier);
 
   const usernameMatch = sql`lower(trim(${appUser.username})) = lower(${identifier})`;

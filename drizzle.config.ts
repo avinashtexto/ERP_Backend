@@ -1,10 +1,11 @@
 import { defineConfig } from 'drizzle-kit';
 import path from 'path';
 import dotenv from 'dotenv';
-dotenv.config({
-  path: path.resolve(process.cwd(), 'env/.env.dev'),
-  override: true,
-});
+if (!process.env.DATABASE_URL) {
+  dotenv.config({
+    path: path.resolve(process.cwd(), 'env/.env.dev'),
+  });
+}
 
 export default defineConfig({
   out: './src/shared/database/migrations',

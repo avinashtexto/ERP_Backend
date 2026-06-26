@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
 import { db } from '../../config/db.config.js';
-import { appUser } from '../../shared/database/schemas/index.js';
+import { appUser, salEmployee } from '../../shared/database/schemas/index.js';
 import { verifyAccessToken, type AuthenticatedUserPayload } from '../../shared/utils/jwt.util.js'; // Note the mandatory .js suffix
 
 export type AuthenticatedRequest = Request;
@@ -48,13 +48,26 @@ export const authenticate = async (
     const decoded = verifyAccessToken(token);
 
     // Check database to ensure user exists
-    const users = await db
-      .select()
-      .from(appUser)
-      .where(eq(appUser.pk_user_id, decoded.pk_user_id))
-      .limit(1);
-
-    const user = users[0];
+    let user: any;
+    if (decoded.role === 'sal_employee') {
+      const employees = await db
+        .select()
+        .from(salEmployee)
+        .where(eq(salEmployee.pk_emp_id, decoded.pk_user_id))
+        .limit(1);
+      user = employees[0];
+      if (user) {
+        user.pk_user_id = user.pk_emp_id;
+        user.fk_emp_id = user.pk_emp_id;
+      }
+    } else {
+      const users = await db
+        .select()
+        .from(appUser)
+        .where(eq(appUser.pk_user_id, decoded.pk_user_id))
+        .limit(1);
+      user = users[0];
+    }
 
     if (!user) {
       return res.build

@@ -61,109 +61,42 @@ export async function resolveEmployeeIdentity(userId: string | number): Promise<
 
   const raw = String(userId).trim();
 
-  // 1. Try treating as numerical fk_emp_id
+  // 1. Try treating as numerical pk_emp_id directly from sal_employee
   if (/^\d+$/.test(raw)) {
-    const result = await db
+    const salEmp = await db
       .select()
-      .from(appUser)
-      .where(eq(appUser.fk_emp_id, sql`${raw}::numeric`))
+      .from(salEmployee)
+      .where(eq(salEmployee.pk_emp_id, Number(raw)))
       .limit(1);
-    const row = result[0];
-    if (row) {
-      // Check sal_employee for geolocation requirement and actual emp_code
-      const salEmp = await db
-        .select()
-        .from(salEmployee)
-        .where(eq(salEmployee.pk_emp_id, Number(raw)))
-        .limit(1);
-      const geolocationRequired = salEmp[0]?.geolocation === true;
-
+    const emp = salEmp[0];
+    if (emp) {
       return {
-        empCode: salEmp[0]?.emp_code || (row.fk_emp_id ? String(row.fk_emp_id) : null),
-        empName: salEmp[0]?.employee || row.username,
-        pkUserId: row.pk_user_id,
-        geolocationRequired,
+        empCode: emp.emp_code,
+        empName: emp.employee,
+        pkUserId: emp.pk_emp_id,
+        geolocationRequired: emp.geolocation === true,
       };
     }
   }
 
-  // 2. Try treating as numerical pk_user_id
-  if (/^\d+$/.test(raw)) {
-    const result = await db
-      .select()
-      .from(appUser)
-      .where(eq(appUser.pk_user_id, Number(raw)))
-      .limit(1);
-    const row = result[0];
-    if (row) {
-      // Check sal_employee for geolocation requirement and actual emp_code
-      const fkEmpId = row.fk_emp_id;
-      if (fkEmpId) {
-        const salEmp = await db
-          .select()
-          .from(salEmployee)
-          .where(eq(salEmployee.pk_emp_id, Number(fkEmpId)))
-          .limit(1);
-        const geolocationRequired = salEmp[0]?.geolocation === true;
-
-        return {
-          empCode: salEmp[0]?.emp_code || (row.fk_emp_id ? String(row.fk_emp_id) : null),
-          empName: salEmp[0]?.employee || row.username,
-          pkUserId: row.pk_user_id,
-          geolocationRequired,
-        };
-      }
-    }
-  }
-
-  // 3. Try treating as username case-insensitive
-  const result = await db
-    .select()
-    .from(appUser)
-    .where(sql`LOWER(TRIM(${appUser.username})) = LOWER(${raw})`)
-    .limit(1);
-  const row = result[0];
-  if (row) {
-    // Check sal_employee for geolocation requirement and actual emp_code
-    const fkEmpId = row.fk_emp_id;
-    if (fkEmpId) {
-      const salEmp = await db
-        .select()
-        .from(salEmployee)
-        .where(eq(salEmployee.pk_emp_id, Number(fkEmpId)))
-        .limit(1);
-      const geolocationRequired = salEmp[0]?.geolocation === true;
-
-      return {
-        empCode: salEmp[0]?.emp_code || (row.fk_emp_id ? String(row.fk_emp_id) : null),
-        empName: salEmp[0]?.employee || row.username,
-        pkUserId: row.pk_user_id,
-        geolocationRequired,
-      };
-    }
-  }
-
-  // 4. Try matching emp_code in sal_employee table (e.g. "EMP001")
+  // 2. Try matching by username or emp_code case-insensitive
   const salEmpRows = await db
     .select()
     .from(salEmployee)
-    .where(sql`LOWER(TRIM(${salEmployee.emp_code})) = LOWER(${raw})`)
+    .where(
+      or(
+        sql`LOWER(TRIM(${salEmployee.username})) = LOWER(${raw})`,
+        sql`LOWER(TRIM(${salEmployee.emp_code})) = LOWER(${raw})`
+      )
+    )
     .limit(1);
   const salEmpRow = salEmpRows[0];
   if (salEmpRow) {
-    const geolocationRequired = salEmpRow.geolocation === true;
-    // Try to find linked app_user
-    const userRows = await db
-      .select()
-      .from(appUser)
-      .where(eq(appUser.fk_emp_id, sql`${salEmpRow.pk_emp_id}::numeric`))
-      .limit(1);
-    const userRow = userRows[0];
     return {
-      empCode: String(salEmpRow.pk_emp_id),
-      empName: userRow?.username || salEmpRow.employee || null,
-      pkUserId: userRow?.pk_user_id ?? null,
-      geolocationRequired,
+      empCode: salEmpRow.emp_code,
+      empName: salEmpRow.employee,
+      pkUserId: salEmpRow.pk_emp_id,
+      geolocationRequired: salEmpRow.geolocation === true,
     };
   }
 
@@ -309,14 +242,14 @@ export async function markAttendance(
   // Range check (skip geofence limit on Checkout punches)
   const isCheckout = normalizedStatus === 'Check OUT';
 
-  // Resolve assigned user branch/location
-  const userRows = await db
+  // Resolve assigned employee branch/location
+  const empRows = await db
     .select()
-    .from(appUser)
-    .where(eq(appUser.pk_user_id, identity.pkUserId!))
+    .from(salEmployee)
+    .where(eq(salEmployee.pk_emp_id, Number(identity.pkUserId!)))
     .limit(1);
-  const matchedUser = userRows[0];
-  const assignedLocationId = matchedUser?.fk_user_id ? Number(matchedUser.fk_user_id) : 1; // Default to 1 (Texto MBP Office)
+  const matchedEmp = empRows[0];
+  const assignedLocationId = matchedEmp?.fk_set_id ? Number(matchedEmp.fk_set_id) : 1; // Default to 1 (Texto MBP Office)
 
   let resolvedOffice = await resolveOfficeLocation(assignedLocationId);
   let matchingRule = 'FIXED_OFFICE_GEOFENCE';
@@ -515,14 +448,14 @@ export async function recordLiveLocation(
       ? Number(payload.accuracy)
       : 15.0;
 
-  // Resolve assigned user branch/location
-  const userRows = await db
+  // Resolve assigned employee branch/location
+  const empRows = await db
     .select()
-    .from(appUser)
-    .where(eq(appUser.pk_user_id, identity.pkUserId!))
+    .from(salEmployee)
+    .where(eq(salEmployee.pk_emp_id, Number(identity.pkUserId!)))
     .limit(1);
-  const matchedUser = userRows[0];
-  const assignedLocationId = matchedUser?.fk_user_id ? Number(matchedUser.fk_user_id) : 1; // Default to 1 (Texto MBP Office)
+  const matchedEmp = empRows[0];
+  const assignedLocationId = matchedEmp?.fk_set_id ? Number(matchedEmp.fk_set_id) : 1; // Default to 1 (Texto MBP Office)
 
   const resolvedOffice = await resolveOfficeLocation(assignedLocationId);
   if (!resolvedOffice) {
@@ -1010,14 +943,14 @@ export async function getCurrentStatus(employeeId: string): Promise<any> {
     }
   }
 
-  // Resolve assigned user branch/location
-  const userRows = await db
+  // Resolve assigned employee branch/location
+  const empRows = await db
     .select()
-    .from(appUser)
-    .where(eq(appUser.pk_user_id, identity.pkUserId!))
+    .from(salEmployee)
+    .where(eq(salEmployee.pk_emp_id, Number(identity.pkUserId!)))
     .limit(1);
-  const matchedUser = userRows[0];
-  const assignedLocationId = matchedUser?.fk_user_id ? Number(matchedUser.fk_user_id) : 1; // Default to 1 (Texto MBP Office)
+  const matchedEmp = empRows[0];
+  const assignedLocationId = matchedEmp?.fk_set_id ? Number(matchedEmp.fk_set_id) : 1; // Default to 1 (Texto MBP Office)
 
   const office = await resolveOfficeLocation(assignedLocationId);
   if (!office) {
