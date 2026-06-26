@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./public/dist",
+
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["./*"]
+    },
+
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "NodeNext",
+
+    "types": [],
+
+    "sourceMap": false,
+    "declaration": false,
+    "removeComments": true,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+
+    "moduleDetection": "force",
+
+    "jsx": "react-jsx",
+    "noUncheckedSideEffectImports": true
+  },
+
+  "include": ["src/**/*", "scripts/create-module.js"],
+  "exclude": ["node_modules", "public"]
+}

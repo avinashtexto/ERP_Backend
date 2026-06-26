@@ -1,0 +1,1 @@
+ALTER TABLE "sal_nature_of_work" ALTER COLUMN "fk_user_id" SET DATA TYPE integer;

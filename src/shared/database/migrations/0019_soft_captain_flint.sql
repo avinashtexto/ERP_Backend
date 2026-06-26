@@ -1,0 +1,1 @@
+ALTER TABLE "sal_it_section" RENAME COLUMN "date_timestamp" TO "date_time_stamp";

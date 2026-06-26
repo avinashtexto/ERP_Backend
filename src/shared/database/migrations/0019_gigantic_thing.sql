@@ -1,0 +1,1 @@
+ALTER TABLE "cont_address" ALTER COLUMN "pincode" SET DATA TYPE varchar(50);

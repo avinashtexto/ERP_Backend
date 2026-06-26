@@ -1,0 +1,1 @@
+ALTER TABLE "cont_common" ALTER COLUMN "fk_emp_id" SET DATA TYPE integer;
