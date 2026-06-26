@@ -325,15 +325,15 @@ export async function getByEmpId(fk_emp_id: number | string) {
   const result = await db
     .select({
       pk_user_id: app_user.pk_user_id,
-      fk_emp_id: sql<number | null>`CAST(${app_user.fk_emp_id} AS integer)`,
+      fk_emp_id: sql<number | null>`CAST(${sal_employee.pk_emp_id} AS integer)`,
       employee: sal_employee.employee,
-      username: app_user.username,
-      mobile: app_user.mobile,
+      username: sql<string>`COALESCE(${app_user.username}, ${sal_employee.username})`,
+      mobile: sql<string>`COALESCE(${app_user.mobile}, ${sal_employee.wp})`,
       fk_ec_id: sql<number | null>`CAST(${app_user.fk_ec_id} AS integer)`,
       email: app_user.email,
-      date_time_stamp: app_user.date_time_stamp,
-      fk_user_id: app_user.fk_user_id,
-      last_status: app_user.last_status,
+      date_time_stamp: sal_employee.date_time_stamp,
+      fk_user_id: sal_employee.fk_user_id,
+      last_status: sal_employee.last_status,
       emp_code: sal_employee.emp_code,
       photo: sal_employee.photo,
       doj: sal_employee.doj,
@@ -351,10 +351,9 @@ export async function getByEmpId(fk_emp_id: number | string) {
       martial_status: sal_employee.martial_status,
       experience: sal_employee.experience,
     })
-    .from(app_user)
-    .leftJoin(sal_employee, eq(app_user.fk_emp_id, sal_employee.pk_emp_id))
-    .leftJoin(email_configuration, eq(app_user.fk_ec_id, email_configuration.pk_ec_id))
-    .where(eq(sql<number>`CAST(${app_user.fk_emp_id} AS integer)`, empId));
+    .from(sal_employee)
+    .leftJoin(app_user, eq(sql<number>`CAST(${app_user.fk_emp_id} AS integer)`, sal_employee.pk_emp_id))
+    .where(eq(sal_employee.pk_emp_id, empId));
 
   return result[0] || null;
 }
@@ -368,16 +367,18 @@ export async function updateByEmpId(fk_emp_id: number | string, data: any, curre
     throw new Error('Employee profile not found');
   }
 
-  // Update app_user
-  const userUpdate: any = {
-    last_status: 'Edited',
-    date_time_stamp: new Date(),
-  };
-  if (data.username !== undefined) userUpdate.username = data.username;
-  if (data.mobile !== undefined) userUpdate.mobile = data.mobile;
-  if (data.email !== undefined) userUpdate.email = data.email;
+  // Update app_user if the record exists
+  if (user.pk_user_id) {
+    const userUpdate: any = {
+      last_status: 'Edited',
+      date_time_stamp: new Date(),
+    };
+    if (data.username !== undefined) userUpdate.username = data.username;
+    if (data.mobile !== undefined) userUpdate.mobile = data.mobile;
+    if (data.email !== undefined) userUpdate.email = data.email;
 
-  await db.update(app_user).set(userUpdate).where(eq(app_user.pk_user_id, user.pk_user_id));
+    await db.update(app_user).set(userUpdate).where(eq(app_user.pk_user_id, user.pk_user_id));
+  }
 
   // Update sal_employee
   const empUpdate: any = {
@@ -393,6 +394,7 @@ export async function updateByEmpId(fk_emp_id: number | string, data: any, curre
   if (data.pan !== undefined) empUpdate.pan_no = data.pan;
   if (data.permanentAddress !== undefined) empUpdate.p_address = data.permanentAddress;
   if (data.presentAddress !== undefined) empUpdate.n_address = data.presentAddress;
+  if (data.username !== undefined) empUpdate.username = data.username;
 
   await db.update(sal_employee).set(empUpdate).where(eq(sal_employee.pk_emp_id, empId));
 

@@ -260,7 +260,7 @@ export const getEmployeeProfile = asyncHandler(
     }
 
     const profile = {
-      pkUserId: String(user.pk_user_id),
+      pkUserId: String(user.pk_user_id || user.fk_emp_id),
       userName: user.employee || user.username,
       fkEmpId: user.fk_emp_id,
       email: user.email,
@@ -333,7 +333,7 @@ export const updateEmployeeProfile = asyncHandler(
       }
 
       const profile = {
-        pkUserId: String(updated.pk_user_id),
+        pkUserId: String(updated.pk_user_id || updated.fk_emp_id),
         userName: updated.employee || updated.username,
         fkEmpId: updated.fk_emp_id,
         email: updated.email,
