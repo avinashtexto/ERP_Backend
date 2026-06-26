@@ -6,6 +6,13 @@ import pg from 'pg';
 export const tenantStorage = new AsyncLocalStorage<string>();
 
 const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  console.error('\n❌ ERROR: DATABASE_URL is not set in the environment variables!');
+  console.error('Please configure the DATABASE_URL environment variable on your hosting provider (e.g. Render Dashboard).\n');
+  process.exit(1);
+}
+
 let commonDatabaseUrl = process.env.COMMON_DATABASE_URL;
 
 if (!commonDatabaseUrl && databaseUrl) {
