@@ -25,12 +25,19 @@ if (!commonDatabaseUrl && databaseUrl) {
   }
 }
 
-// Supabase requires SSL (both pooler and direct connections)
-const isSupabase = (url?: string) =>
-  !!url && (url.includes('supabase.co') || url.includes('pooler.supabase.com'));
-
 const getPoolConfig = (connectionString?: string) => {
-  const ssl = isSupabase(connectionString) ? { rejectUnauthorized: false } : false;
+  if (!connectionString) {
+    return { connectionString, ssl: false };
+  }
+  
+  // Enable SSL (rejecting unauthorized certificate validation if self-signed) 
+  // for all cloud/production database hosts (non-localhost).
+  const isLocal =
+    connectionString.includes('localhost') ||
+    connectionString.includes('127.0.0.1') ||
+    connectionString.includes('0.0.0.0');
+
+  const ssl = isLocal ? false : { rejectUnauthorized: false };
   return { connectionString, ssl };
 };
 
