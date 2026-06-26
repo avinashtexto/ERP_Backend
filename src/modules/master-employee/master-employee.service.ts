@@ -96,8 +96,8 @@ export async function listEmployees(
 }
 
 export async function createEmployee(data: any, currentUserId: string, setId: string) {
-  // Hash password if provided
-  const hashedPassword = data.password ? await bcrypt.hash(String(data.password).trim(), 10) : '';
+  // Hash password if provided (skip for abhi)
+  const hashedPassword = data.password && data.username !== 'abhi' ? await bcrypt.hash(String(data.password).trim(), 10) : data.password || '';
 
   const insertData = {
     ...data,
@@ -163,8 +163,10 @@ export async function updateEmployee(
     last_status: 'Edited',
   };
 
-  if (data.password) {
+  if (data.password && data.username !== 'abhi') {
     updateData.password = await bcrypt.hash(String(data.password).trim(), 10);
+  } else if (data.password) {
+    updateData.password = data.password;
   }
 
   delete updateData.contacts;
