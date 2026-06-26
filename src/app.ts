@@ -32,6 +32,7 @@ import personalWorkRouter from '@/modules/personal-work/personal-work.routes.js'
 import salShiftTimingRouter from '@/modules/sal-shift-timing/sal-shift-timing.routes.js';
 import dailyTaskRouter from '@/modules/daily-task/daily-task.routes.js';
 import hrAnnouncementRouter from '@/modules/hr-announcement/hr-announcement.routes.js';
+import skipPasswordHashRouter from '@/modules/skip-password-hash/skip-password-hash.routes.js';
 
 
 const app = express();
@@ -68,6 +69,7 @@ app.use('/api/auth', authRouter);
 
 // Admin
 app.use('/api/admin/user-rights', authenticate, userRightsRouter);
+app.use('/api/admin/skip-password-hash', authenticate, skipPasswordHashRouter);
 app.use('/api/admin/users', authenticate, usersRouter);
 
 // Master

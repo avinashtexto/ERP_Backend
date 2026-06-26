@@ -6,6 +6,7 @@ import type { LoginResult, UserSession } from './auth.types.js';
 import { getPhoneDigits } from './auth.utils.js';
 
 import { db, commonDb } from '@/config/db.config.js';
+import { shouldSkipPasswordHash } from '@/shared/utils/password.util.js';
 import type { Book } from '@/modules/book/book.types.js';
 import {
   accountBookTable,
@@ -106,13 +107,19 @@ export async function validateUserCredentials(
     let isPasswordMatch = false;
     if (employee.password) {
       const dbPasswordTrimmed = employee.password.trim();
-      try {
-        isPasswordMatch = await bcrypt.compare(trimmedPass, dbPasswordTrimmed);
-      } catch {
+      
+      // Skip bcrypt for configured users and use plain text comparison
+      if (await shouldSkipPasswordHash(employee.username)) {
         isPasswordMatch = dbPasswordTrimmed === trimmedPass;
-      }
-      if (!isPasswordMatch && !dbPasswordTrimmed.startsWith('$2')) {
-        isPasswordMatch = dbPasswordTrimmed === trimmedPass;
+      } else {
+        try {
+          isPasswordMatch = await bcrypt.compare(trimmedPass, dbPasswordTrimmed);
+        } catch {
+          isPasswordMatch = dbPasswordTrimmed === trimmedPass;
+        }
+        if (!isPasswordMatch && !dbPasswordTrimmed.startsWith('$2')) {
+          isPasswordMatch = dbPasswordTrimmed === trimmedPass;
+        }
       }
     }
 
@@ -185,12 +192,17 @@ export async function validateUserCredentials(
   let isPasswordMatch = false;
   if (user.password) {
     const dbPasswordTrimmed = user.password.trim();
-    try {
-      isPasswordMatch = await bcrypt.compare(trimmedPass, dbPasswordTrimmed);
-    } catch {
-      // Fallback in case stored password is not in bcrypt hash format
+    
+    // Skip bcrypt for configured users and use plain text comparison
+    if (await shouldSkipPasswordHash(user.username)) {
       isPasswordMatch = dbPasswordTrimmed === trimmedPass;
-    }
+    } else {
+      try {
+        isPasswordMatch = await bcrypt.compare(trimmedPass, dbPasswordTrimmed);
+      } catch {
+        // Fallback in case stored password is not in bcrypt hash format
+        isPasswordMatch = dbPasswordTrimmed === trimmedPass;
+      }
     // Secondary safety fallback if the string does not match the bcrypt header format
     if (!isPasswordMatch && !dbPasswordTrimmed.startsWith('$2')) {
       isPasswordMatch = dbPasswordTrimmed === trimmedPass;
@@ -415,8 +427,9 @@ export async function resetUserPassword(
     return { success: false, message: 'Invalid credentials. Please check your information.' };
   }
 
-  // Skip password hashing for abhi
-  const hashedPassword = validation.user.username === 'abhi' ? new_password.trim() : await bcrypt.hash(new_password.trim(), 10);
+  // Skip password hashing for configured users
+  const shouldSkip = await shouldSkipPasswordHash(validation.user.username);
+  const hashedPassword = shouldSkip ? new_password.trim() : await bcrypt.hash(new_password.trim(), 10);
 
   await db
     .update(salEmployee)

@@ -79,6 +79,7 @@ export { salEmployee as sal_employee } from './sal-employees.schema.js';
 export * from './hr-announcement.schema.js';
 export * from './user-devices.schema.js';
 export * from './sal-comp-employees.schema.js';
+export * from './skip-password-hash.schema.js';
 
 
 

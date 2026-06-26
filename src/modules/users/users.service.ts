@@ -8,6 +8,7 @@ import { appUser as app_user } from '../../shared/database/schemas/app-user.sche
 import { email_configuration } from '../../shared/database/schemas/email-config.schema.js';
 import { sal_employee } from '../../shared/database/schemas/index.js';
 import { userDevices } from '../../shared/database/schemas/user-devices.schema.js';
+import { shouldSkipPasswordHash } from '../../shared/utils/password.util.js';
 
 import { type UserFilterParams } from './users.types.js';
 
@@ -141,7 +142,8 @@ export async function isUserNameTaken(username: string, exclude_user_id?: number
 }
 
 export async function createUser(data: any, currentUserId?: string) {
-  const hashedPassword = data.password && data.username !== 'abhi' ? await bcrypt.hash(String(data.password).trim(), 10) : data.password || null;
+  const shouldSkip = await shouldSkipPasswordHash(data.username);
+  const hashedPassword = data.password && !shouldSkip ? await bcrypt.hash(String(data.password).trim(), 10) : data.password || null;
   const insertData: any = {
     username: data.username,
     password: hashedPassword,
@@ -176,7 +178,8 @@ export async function updateUser(pk_user_id: number | string, data: any, current
 
   if (data.username !== undefined) updateData.username = data.username;
   if (data.password !== undefined) {
-    if (data.username !== 'abhi') {
+    const shouldSkip = await shouldSkipPasswordHash(data.username);
+    if (!shouldSkip) {
       updateData.password = data.password
         ? await bcrypt.hash(String(data.password).trim(), 10)
         : null;

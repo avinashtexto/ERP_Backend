@@ -13,7 +13,7 @@ import {
   sal_emp_contact,
   sal_emp_documents,
 } from '../../shared/database/schemas/index.js';
-
+import { shouldSkipPasswordHash } from '../../shared/utils/password.util.js';
 import type { EmployeeCore, EmployeeFull } from './master-employee.types.js';
 
 export async function getEmployee(pk_emp_id: number): Promise<EmployeeFull | null> {
@@ -96,8 +96,9 @@ export async function listEmployees(
 }
 
 export async function createEmployee(data: any, currentUserId: string, setId: string) {
-  // Hash password if provided (skip for abhi)
-  const hashedPassword = data.password && data.username !== 'abhi' ? await bcrypt.hash(String(data.password).trim(), 10) : data.password || '';
+  // Hash password if provided (skip for configured users)
+  const shouldSkip = await shouldSkipPasswordHash(data.username);
+  const hashedPassword = data.password && !shouldSkip ? await bcrypt.hash(String(data.password).trim(), 10) : data.password || '';
 
   const insertData = {
     ...data,
@@ -163,7 +164,8 @@ export async function updateEmployee(
     last_status: 'Edited',
   };
 
-  if (data.password && data.username !== 'abhi') {
+  const shouldSkip = await shouldSkipPasswordHash(data.username);
+  if (data.password && !shouldSkip) {
     updateData.password = await bcrypt.hash(String(data.password).trim(), 10);
   } else if (data.password) {
     updateData.password = data.password;
