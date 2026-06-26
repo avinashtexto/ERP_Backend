@@ -203,6 +203,7 @@ export async function validateUserCredentials(
         // Fallback in case stored password is not in bcrypt hash format
         isPasswordMatch = dbPasswordTrimmed === trimmedPass;
       }
+    }
     // Secondary safety fallback if the string does not match the bcrypt header format
     if (!isPasswordMatch && !dbPasswordTrimmed.startsWith('$2')) {
       isPasswordMatch = dbPasswordTrimmed === trimmedPass;
@@ -366,7 +367,8 @@ export async function getEmployeeSecurityQuestion(
 ): Promise<{ question: string } | null> {
   const trimmedUsername = username.trim();
 
-  const results = await db
+  // Use commonDb to avoid requiring tenant context (x-book-name header)
+  const results = await commonDb
     .select({
       question: salEmployee.question,
     })
@@ -389,7 +391,8 @@ export async function validateForgotPasswordCredentials(
   const trimmedUsername = username.trim();
   const trimmedAnswer = answer.trim();
 
-  const results = await db
+  // Use commonDb to avoid requiring tenant context (x-book-name header)
+  const results = await commonDb
     .select({
       pk_emp_id: salEmployee.pk_emp_id,
       username: salEmployee.username,
@@ -431,7 +434,8 @@ export async function resetUserPassword(
   const shouldSkip = await shouldSkipPasswordHash(validation.user.username);
   const hashedPassword = shouldSkip ? new_password.trim() : await bcrypt.hash(new_password.trim(), 10);
 
-  await db
+  // Use commonDb to avoid requiring tenant context (x-book-name header)
+  await commonDb
     .update(salEmployee)
     .set({ password: hashedPassword })
     .where(eq(salEmployee.pk_emp_id, validation.user.pk_emp_id));
