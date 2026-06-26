@@ -1,4 +1,7 @@
 import { Router } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs/promises';
 
 import * as attendanceController from '../attendance/attendance.controller.js';
 import * as authController from '../auth/auth.controller.js';
@@ -13,6 +16,25 @@ import { authenticate } from '@/core/middlewares/auth.middleware.js';
 import { db } from '@/config/db.config.js';
 import { hr_notification } from '@/shared/database/schemas/index.js';
 import { desc, eq } from 'drizzle-orm';
+
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.resolve(process.cwd(), 'public/uploads/profile');
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    } catch (err) {
+      cb(err as Error, uploadDir);
+    }
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}${ext}`;
+    cb(null, uniqueName);
+  }
+});
+
+const upload = multer({ storage });
 
 /**
  * Mobile API Router
@@ -655,6 +677,34 @@ router.get('/attendance/employee/:id', authenticate, usersController.getEmployee
  *         description: Profile updated successfully
  */
 router.put('/attendance/employee/:id', authenticate, usersController.updateEmployeeProfile);
+
+/**
+ * @openapi
+ * /api/mobile/attendance/profile/image:
+ *   post:
+ *     summary: Upload profile image
+ *     tags:
+ *       - Mobile
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               profileImage:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Profile image updated successfully
+ */
+router.post(
+  '/attendance/profile/image',
+  authenticate,
+  upload.single('profileImage'),
+  usersController.uploadProfileImage,
+);
 
 /**
  * @openapi

@@ -371,6 +371,85 @@ export const updateEmployeeProfile = asyncHandler(
   },
 );
 
+// ── POST /attendance/profile/image (Mobile Profile Image Upload) ───
+export const uploadProfileImage = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const authUserId = currentUserId(req);
+    if (!authUserId) {
+      res.build.withStatus(401).withError('UNAUTHORIZED', 'Authentication required.').fail().send();
+      return;
+    }
+
+    if (!req.file) {
+      res.build.withStatus(400).withError('BAD_REQUEST', 'No image file uploaded.').fail().send();
+      return;
+    }
+
+    const empId = authUserId;
+    const user = await UserService.getByEmpId(empId);
+    if (!user) {
+      res.build.withStatus(404).withError('NOT_FOUND', 'Employee profile not found.').fail().send();
+      return;
+    }
+
+    try {
+      // The file was saved by multer to public/uploads/profile/
+      // The relative path we store in the DB is e.g. /uploads/profile/filename.jpg
+      const profileImageUrl = `/uploads/profile/${req.file.filename}`;
+
+      // Update the employee profile with the new photo URL
+      const updated = await UserService.updateByEmpId(
+        empId,
+        {
+          profileImageUrl,
+        },
+        authUserId,
+      );
+
+      if (!updated) {
+        res.build.withStatus(404).withError('NOT_FOUND', 'Profile image update failed.').fail().send();
+        return;
+      }
+
+      const profile = {
+        pkUserId: String(updated.pk_user_id || updated.fk_emp_id),
+        userName: updated.employee || updated.username,
+        fkEmpId: updated.fk_emp_id,
+        email: updated.email,
+        phone: updated.mobile,
+        profileImageUrl: updated.photo || null,
+        empCode: updated.emp_code || null,
+        // Additional fields from sal_employee
+        doj: updated.doj || null,
+        dob: updated.dob || null,
+        bloodGroup: updated.blood_grp || null,
+        aadhar: updated.aadhar || null,
+        panNo: updated.pan_no || null,
+        permanentAddress: updated.p_address || null,
+        presentAddress: updated.n_address || null,
+        pfNo: updated.pf_no || null,
+        esicNo: updated.esic_no || null,
+        accountNo: updated.account_no || null,
+        employmentType: updated.type || null,
+        gender: updated.gender || null,
+        maritalStatus: updated.martial_status || null,
+        experience: updated.experience || null,
+      };
+
+      res.build
+        .withStatus(200)
+        .withModule('users')
+        .withMessage('Profile image updated successfully')
+        .withData({ profile })
+        .success()
+        .send();
+    } catch (err) {
+      const msg = (err as Error).message;
+      res.build.withStatus(400).withError('BAD_REQUEST', msg).fail().send();
+    }
+  },
+);
+
 export const registerDeviceToken = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const userIdStr = currentUserId(req);
   if (!userIdStr) {
