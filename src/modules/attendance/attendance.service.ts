@@ -297,26 +297,39 @@ export async function markAttendance(
 
   const address = params.remark || resolvedOffice.address || 'Office Zone';
 
-  // Daily punch limit checks
-  if (normalizedStatus === 'Check IN' || normalizedStatus === 'Check OUT') {
-    const alreadyExists = await checkExistingPunchToday(empCode, normalizedStatus);
-    if (alreadyExists) {
+  // Sequential punch validation: Check OUT must follow Check IN, Check IN must follow Check OUT
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const lastPunches = await db
+    .select()
+    .from(attendanceTable)
+    .where(
+      and(
+        or(eq(attendanceTable.empCode, empCode), eq(attendanceTable.empCode, String(empCode))),
+        eq(attendanceTable.atDate, todayStr),
+      ),
+    )
+    .orderBy(desc(attendanceTable.punchDatetime))
+    .limit(1);
+
+  const lastPunch = lastPunches[0];
+  const lastStatus = lastPunch ? lastPunch.punch : null;
+
+  if (normalizedStatus === 'Check IN') {
+    // Allow Check IN if no punches today or last punch was Check OUT
+    if (lastStatus && lastStatus !== 'Check OUT' && lastStatus !== 'Check IN') {
       throw new GpsAttendanceError(
-        `You have already recorded ${normalizedStatus} for today.`,
+        `Cannot Check IN. Last punch was ${lastStatus}. Please complete the current cycle first.`,
         400,
-        'DUPLICATE_ATTENDANCE',
+        'INVALID_PUNCH_SEQUENCE',
       );
     }
-  }
-
-  if (normalizedStatus === 'Check OUT') {
-    const hasCheckIn = await checkExistingPunchToday(empCode, 'Check IN');
-    if (!hasCheckIn) {
+  } else if (normalizedStatus === 'Check OUT') {
+    // Check OUT must follow Check IN or Resume
+    if (!lastStatus || (lastStatus !== 'Check IN' && lastStatus !== 'Resume')) {
       throw new GpsAttendanceError('You must Check IN before Check OUT.', 400, 'MISSING_CHECK_IN');
     }
   }
 
-  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
   const attendanceStatus = withinRange || isCheckout ? 'approved' : 'rejected';
 
