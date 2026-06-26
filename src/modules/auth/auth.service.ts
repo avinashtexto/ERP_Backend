@@ -367,8 +367,7 @@ export async function getEmployeeSecurityQuestion(
 ): Promise<{ question: string } | null> {
   const trimmedUsername = username.trim();
 
-  // Use commonDb to avoid requiring tenant context (x-book-name header)
-  const results = await commonDb
+  const results = await db
     .select({
       question: salEmployee.question,
     })
@@ -391,8 +390,7 @@ export async function validateForgotPasswordCredentials(
   const trimmedUsername = username.trim();
   const trimmedAnswer = answer.trim();
 
-  // Use commonDb to avoid requiring tenant context (x-book-name header)
-  const results = await commonDb
+  const results = await db
     .select({
       pk_emp_id: salEmployee.pk_emp_id,
       username: salEmployee.username,
@@ -434,8 +432,7 @@ export async function resetUserPassword(
   const shouldSkip = await shouldSkipPasswordHash(validation.user.username);
   const hashedPassword = shouldSkip ? new_password.trim() : await bcrypt.hash(new_password.trim(), 10);
 
-  // Use commonDb to avoid requiring tenant context (x-book-name header)
-  await commonDb
+  await db
     .update(salEmployee)
     .set({ password: hashedPassword })
     .where(eq(salEmployee.pk_emp_id, validation.user.pk_emp_id));
