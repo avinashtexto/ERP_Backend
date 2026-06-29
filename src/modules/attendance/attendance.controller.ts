@@ -56,8 +56,11 @@ export async function health(req: Request, res: Response): Promise<void> {
 export async function punch(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const validated = cleanObject(punchRequestSchema.parse(req.body));
-    const userId = req.user ? req.user.id : validated.empCode || validated.EmpCode;
-
+    const requestUserId = req.user 
+      ? (req.user.fk_emp_id ?? req.user.id) 
+      : validated.empCode || validated.EmpCode;
+    
+    const userId = requestUserId;
     logger.info('Punch IN Request:', { userId, validated });
 
     if (!userId) {
@@ -126,7 +129,7 @@ export async function markGeofenceAttendance(
 export async function checkout(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const validated = cleanObject(punchRequestSchema.parse(req.body));
-    const userId = req.user ? req.user.id : validated.empCode || validated.EmpCode;
+    const userId = req.user ? (req.user.fk_emp_id ?? req.user.id) : validated.empCode || validated.EmpCode;
 
     logger.info('Checkout Request:', { userId, validated });
 
@@ -198,7 +201,7 @@ export async function getHistory(req: AuthenticatedRequest, res: Response): Prom
 // getConfig controller
 export async function getAttendanceConfig(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const userId = req.user ? req.user.id : 1;
+    const userId = req.user ? (req.user.fk_emp_id ?? req.user.id) : 1;
     const config = await service.getAttendanceConfig(userId);
 
     res.build
@@ -218,7 +221,7 @@ export async function getStatus(req: AuthenticatedRequest, res: Response): Promi
     const userId = req.params.empCode
       ? String(req.params.empCode)
       : req.user
-        ? String(req.user.id)
+        ? String(req.user.fk_emp_id ?? req.user.id)
         : '';
     
     logger.info('Get Status Request:', { userId, params: req.params, user: req.user });
@@ -237,7 +240,7 @@ export async function getStatus(req: AuthenticatedRequest, res: Response): Promi
       statusInfo = await service.getCurrentStatus(userId);
       logger.info('Get Status Result:', statusInfo);
     } catch (error: any) {
-      const authUserId = req.user ? String(req.user.id) : '';
+      const authUserId = req.user ? String(req.user.fk_emp_id ?? req.user.id) : '';
       if (error.code === 'EMPLOYEE_NOT_FOUND' && authUserId && userId !== authUserId) {
         statusInfo = await service.getCurrentStatus(authUserId);
         logger.info('Get Status Result (fallback):', statusInfo);
@@ -269,7 +272,7 @@ export async function getStatus(req: AuthenticatedRequest, res: Response): Promi
 export async function postLiveLocation(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const validated = cleanObject(liveLocationRequestSchema.parse(req.body));
-    const userId = req.user ? req.user.id : null;
+    const userId = req.user ? (req.user.fk_emp_id ?? req.user.id) : null;
 
     if (!userId) {
       res.build
