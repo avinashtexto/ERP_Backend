@@ -50,17 +50,18 @@ export const authenticate = async (
     // Check database to ensure user exists
     let user: any;
     if (decoded.role === 'sal_employee') {
-      if (!decoded.fk_emp_id) {
+      const empId = Number(decoded.fk_emp_id);
+      if (!empId || isNaN(empId)) {
         return res.build
           .withStatus(401)
-          .withError('UNAUTHORIZED', 'Employee ID missing from token')
+          .withError('UNAUTHORIZED', 'Employee ID missing or invalid in token')
           .fail()
           .send();
       }
       const employees = await db
         .select()
         .from(salEmployee)
-        .where(eq(salEmployee.pk_emp_id, decoded.fk_emp_id!))
+        .where(eq(salEmployee.pk_emp_id, empId))
         .limit(1);
       user = employees[0];
       if (user) {

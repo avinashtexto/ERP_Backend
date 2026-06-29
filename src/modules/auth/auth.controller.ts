@@ -79,7 +79,7 @@ export async function login(req: Request, res: Response): Promise<void> {
         id: userId,
         username: user.username,
         role: 'sal_employee',
-        fk_emp_id: user.fk_emp_id,
+        fk_emp_id: user.fk_emp_id ? Number(user.fk_emp_id) : null,
       };
 
       const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '1d' });
