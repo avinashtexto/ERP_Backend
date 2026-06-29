@@ -145,9 +145,15 @@ export async function resolveOfficeLocation(locationId: number | null): Promise<
       radius: loc.allowedRadius ? Number(loc.allowedRadius) : 25,
       address: loc.address,
     };
-  }
-
-  return null;
+  // Hardcoded fallback for Satish Office if no active location is found
+  return {
+    locationId: 999,
+    name: 'Satish Office',
+    latitude: 19.062938,
+    longitude: 72.891391,
+    radius: 150, // Safe radius for testing
+    address: 'Satish Office Location',
+  };
 }
 
 // Helper: Resolve all active office locations in system
@@ -157,7 +163,7 @@ export async function resolveAllOffices(): Promise<any[]> {
     .from(attendanceLocationsTable)
     .where(eq(attendanceLocationsTable.isActive, true));
 
-  return dbLocations.map((loc) => ({
+  const mappedLocations = dbLocations.map((loc) => ({
     locationId: loc.id,
     name: loc.locationName,
     latitude: Number(loc.latitude),
@@ -165,6 +171,18 @@ export async function resolveAllOffices(): Promise<any[]> {
     radius: loc.allowedRadius ? Number(loc.allowedRadius) : 25,
     address: loc.address,
   }));
+
+  // Always inject Satish Office for testing/fallback
+  mappedLocations.push({
+    locationId: 999,
+    name: 'Satish Office',
+    latitude: 19.062938,
+    longitude: 72.891391,
+    radius: 150,
+    address: 'Satish Office Location',
+  });
+
+  return mappedLocations;
 }
 
 // Check if double punch exists today
