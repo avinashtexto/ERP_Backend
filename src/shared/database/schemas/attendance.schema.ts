@@ -26,6 +26,8 @@ export const attendanceLocationsTable = pgTable('attendance_locations', {
   allowedRadius: numeric('allowed_radius', { precision: 10, scale: 2 }).default('25.00'),
   locationType: varchar('location_type', { length: 50 }),
   isActive: boolean('is_active').default(true).notNull(),
+  fkHLId: integer('fk_hl_id'),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
 export const gpsAttendanceLogsTable = pgTable('gps_attendance_logs', {

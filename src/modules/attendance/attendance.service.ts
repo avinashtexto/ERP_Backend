@@ -1020,47 +1020,37 @@ export async function getAttendanceConfig(userId: string | number): Promise<any>
   };
 }
 
-// Fetch all geolocations (returns hardcoded data for now)
+// Fetch all geolocations from database
 export async function getAllGeolocations(): Promise<any> {
-  // Return hardcoded geolocation data without database changes
-  const geolocations = [
-    {
-      pkGeoId: 1,
-      OfficeName: 'Main Office',
-      fkHLId: 1,
-      Latitude: 19.096388750705227,
-      Longitude: 73.01687580932347,
-      RadiusMeters: 25,
-      IsActive: true,
-      CreatedAt: new Date().toISOString(),
-      officeName: 'Main Office',
-    },
-    {
-      pkGeoId: 2,
-      OfficeName: 'Koparkhairne',
-      fkHLId: 2,
-      Latitude: 19.1026651,
-      Longitude: 73.0090135,
-      RadiusMeters: 25,
-      IsActive: false,
-      CreatedAt: new Date().toISOString(),
-      officeName: 'Koparkhairne',
-    },
-    {
-      pkGeoId: 3,
-      OfficeName: 'Texto',
-      fkHLId: 3,
-      Latitude: 19.1110101,
-      Longitude: 73.0155262,
-      RadiusMeters: 25,
-      IsActive: false,
-      CreatedAt: new Date().toISOString(),
-      officeName: 'Texto',
-    },
-  ];
+  try {
+    const locations = await db
+      .select({
+        pkGeoId: attendanceLocationsTable.id,
+        OfficeName: attendanceLocationsTable.locationName,
+        fkHLId: attendanceLocationsTable.fkHLId,
+        Latitude: attendanceLocationsTable.latitude,
+        Longitude: attendanceLocationsTable.longitude,
+        RadiusMeters: attendanceLocationsTable.allowedRadius,
+        IsActive: attendanceLocationsTable.isActive,
+        CreatedAt: attendanceLocationsTable.createdAt,
+        officeName: attendanceLocationsTable.locationName,
+      })
+      .from(attendanceLocationsTable)
+      .orderBy(attendanceLocationsTable.id);
 
-  return {
-    success: true,
-    geolocations,
-  };
+    const geolocations = locations.map(loc => ({
+      ...loc,
+      Latitude: Number(loc.Latitude),
+      Longitude: Number(loc.Longitude),
+      RadiusMeters: Number(loc.RadiusMeters),
+    }));
+
+    return {
+      success: true,
+      geolocations,
+    };
+  } catch (error) {
+    console.error('Failed to fetch geolocations from database:', error);
+    throw error;
+  }
 }
