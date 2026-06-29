@@ -12,7 +12,7 @@ export const contMoc = pgTable(
     fk_mt_id: integer('fk_mt_id')
       .notNull()
       .references(() => contMocType.pk_mt_id),
-    date_timestamp: timestamp('date_timestamp', { mode: 'date' }).notNull(),
+    date_timestamp: timestamp('date_timestamp').notNull(),
     fk_user_id: integer('fk_user_id')
       .notNull()
       .references(() => appUser.pk_user_id),

@@ -3,7 +3,7 @@ import { pgTable, varchar, date, boolean, timestamp, numeric, integer, unique, i
 export const sal_loan = pgTable(
   "sal_loan",
   {
-    pk_loan_id: integer("pk_loan_id").primaryKey().notNull().generatedByDefaultAsIdentity(),
+    pk_loan_id: integer("pk_loan_id").primaryKey().generatedByDefaultAsIdentity(),
     loan_no: varchar("loan_no", { length: 20 }).notNull(),
     loan_date: date("loan_date").notNull(),
     fk_emp_id: integer("fk_emp_id").notNull(),

@@ -8,9 +8,7 @@ export const sal_it_section = pgTable('sal_it_section', {
     scale: 2,
   }),
   fk_fy_id: integer('fk_fy_id'),
-  date_time_stamp: timestamp('date_time_stamp', {
-    mode: 'date',
-  }).defaultNow(),
+  date_time_stamp: timestamp('date_time_stamp').defaultNow(),
   fk_user_id: integer('fk_user_id'),
   last_status: varchar('last_status', { length: 10 }),
   additraction: varchar('additraction', { length: 12 }),

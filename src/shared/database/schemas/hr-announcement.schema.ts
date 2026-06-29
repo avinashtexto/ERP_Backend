@@ -80,7 +80,7 @@ export const audit_log = pgTable(
     user_id: varchar('user_id', { length: 50 }),
     user_ip: varchar('user_ip', { length: 45 }),
     user_agent: varchar('user_agent', { length: 255 }),
-    timestamp: timestamp('timestamp', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     index('idx_audit_log_resource').on(table.resource, table.resource_id),
@@ -97,8 +97,8 @@ export const notification_log = pgTable(
     user_id: varchar('user_id', { length: 50 }),
     channel: varchar('channel', { length: 50 }).notNull(),
     status: varchar('status', { length: 50 }).notNull(),
-    sent_at: timestamp('sent_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
-    delivered_at: timestamp('delivered_at', { mode: 'date', withTimezone: true }),
+    sent_at: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull(),
+    delivered_at: timestamp('delivered_at', { withTimezone: true }),
     error_message: varchar('error_message', { length: 255 }),
   },
   (table) => [
@@ -117,8 +117,8 @@ export const sync_log = pgTable(
     status: varchar('status', { length: 50 }).notNull(),
     sync_data: jsonb('sync_data'),
     error: text('error'),
-    attempted_at: timestamp('attempted_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
-    completed_at: timestamp('completed_at', { mode: 'date', withTimezone: true }),
+    attempted_at: timestamp('attempted_at', { withTimezone: true }).defaultNow().notNull(),
+    completed_at: timestamp('completed_at', { withTimezone: true }),
   },
   (table) => [
     index('idx_sync_log_announcement').on(table.announcement_id),
@@ -138,9 +138,9 @@ export const file_metadata = pgTable(
     virus_scanned: boolean('virus_scanned').default(false).notNull(),
     scan_result: varchar('scan_result', { length: 255 }),
     uploaded_by: varchar('uploaded_by', { length: 50 }),
-    uploaded_at: timestamp('uploaded_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    uploaded_at: timestamp('uploaded_at', { withTimezone: true }).defaultNow().notNull(),
     accessed_count: integer('accessed_count').default(0).notNull(),
-    last_accessed: timestamp('last_accessed', { mode: 'date', withTimezone: true }),
+    last_accessed: timestamp('last_accessed', { withTimezone: true }),
   },
   (table) => [
     index('idx_file_metadata_announcement').on(table.announcement_id),

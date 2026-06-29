@@ -23,7 +23,7 @@ export const appUserRight = pgTable(
     print: boolean('print'),
     export: boolean('export'),
     authorize: boolean('authorize'),
-    date_time_stamp: timestamp('date_time_stamp', { mode: 'date' }).notNull().defaultNow(),
+    date_time_stamp: timestamp('date_time_stamp').notNull().defaultNow(),
     fk_user_id: bigint('fk_user_id', { mode: 'number' })
       .notNull()
       .references(() => appUser.pk_user_id),

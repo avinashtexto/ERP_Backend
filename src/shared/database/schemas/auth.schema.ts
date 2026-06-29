@@ -9,8 +9,8 @@ export const userSessions = pgTable('user_sessions', {
     .notNull()
     .references(() => appUser.pk_user_id, { onDelete: 'cascade' }),
   refresh_token: text('refresh_token').notNull(),
-  created_at: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
-  expires_at: timestamp('expires_at', { mode: 'date' }).notNull(),
+  created_at: timestamp('created_at').defaultNow().notNull(),
+  expires_at: timestamp('expires_at').notNull(),
 });
 
 export const adminSessions = pgTable('admin_sessions', {
@@ -20,8 +20,8 @@ export const adminSessions = pgTable('admin_sessions', {
     .references(() => appUser.pk_user_id, { onDelete: 'cascade' }),
   refresh_token: varchar('refresh_token', { length: 500 }).notNull(),
   deviceInfo: varchar('device_info', { length: 500 }),
-  created_at: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
-  expires_at: timestamp('expires_at', { mode: 'date' }).notNull(),
+  created_at: timestamp('created_at').defaultNow().notNull(),
+  expires_at: timestamp('expires_at').notNull(),
 });
 
 export const userSessionsRelations = relations(userSessions, ({ one }) => ({

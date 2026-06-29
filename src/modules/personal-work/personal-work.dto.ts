@@ -17,14 +17,34 @@ export const PersonalWorkFilterDto = z.object({
 });
 export type PersonalWorkFilterDtoType = z.infer<typeof PersonalWorkFilterDto>;
 
-export const CreatePersonalWorkDto = z.object({
+// Base schema without transform for partial updates
+const CreatePersonalWorkBaseSchema = z.object({
   request_date: z.string().transform((v) => new Date(v)),
   fk_emp_id: numericId,
-  leaving_time: z.string().transform((v) => new Date(v)),
-  return_time: z.string().transform((v) => new Date(v)),
+  leaving_time: z.string(),
+  return_time: z.string(),
   break_time: z.coerce.number().int().nonnegative().optional(),
   reason: z.string().min(1, "Reason is required").max(250),
   remarks: z.string().max(250).optional().default(""),
+});
+
+// Helper function to parse time strings
+const parseTime = (timeStr: string, baseDate: Date): Date => {
+  const parts = timeStr.split(':').map(Number);
+  const hours = parts[0] ?? 0;
+  const minutes = parts[1] ?? 0;
+  const result = new Date(baseDate);
+  result.setHours(hours, minutes, 0, 0);
+  return result;
+};
+
+export const CreatePersonalWorkDto = CreatePersonalWorkBaseSchema.transform((data) => {
+  const requestDate = new Date(data.request_date);
+  return {
+    ...data,
+    leaving_time: parseTime(data.leaving_time, requestDate),
+    return_time: parseTime(data.return_time, requestDate),
+  };
 }).refine(
   (data) => data.leaving_time < data.return_time,
   {
@@ -43,21 +63,6 @@ export const CreatePersonalWorkDto = z.object({
   {
     message: "Personal work can only be applied for current or future dates",
     path: ["request_date"],
-  }
-).refine(
-  (data) => {
-    // Ensure leaving and return times are within the same day as request_date
-    const requestDate = new Date(data.request_date);
-    requestDate.setHours(0, 0, 0, 0);
-    const leavingDate = new Date(data.leaving_time);
-    leavingDate.setHours(0, 0, 0, 0);
-    const returnDate = new Date(data.return_time);
-    returnDate.setHours(0, 0, 0, 0);
-    return leavingDate.getTime() === requestDate.getTime() && returnDate.getTime() === requestDate.getTime();
-  },
-  {
-    message: "Leaving and return times must be on the same day as the request date",
-    path: ["leaving_time"],
   }
 ).refine(
   (data) => {
@@ -83,6 +88,9 @@ export const CreatePersonalWorkDto = z.object({
     path: ["leaving_time"],
   }
 );
+
+// Export base schema for partial updates
+export const CreatePersonalWorkBaseDto = CreatePersonalWorkBaseSchema;
 export type CreatePersonalWorkDtoType = z.infer<typeof CreatePersonalWorkDto>;
 
 export const AuthorizePersonalWorkDto = z.object({

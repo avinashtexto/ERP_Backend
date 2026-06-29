@@ -9,8 +9,8 @@ export const userDevices = pgTable('user_devices', {
     .references(() => appUser.pk_user_id, { onDelete: 'cascade' }),
   device_token: text('device_token').notNull().unique(),
   device_type: varchar('device_type', { length: 50 }),
-  created_at: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
-  updated_at: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  created_at: timestamp('created_at').defaultNow().notNull(),
+  updated_at: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const userDevicesRelations = relations(userDevices, ({ one }) => ({

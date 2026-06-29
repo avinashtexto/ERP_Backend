@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import {
   PersonalWorkFilterDto,
   CreatePersonalWorkDto,
+  CreatePersonalWorkBaseDto,
   AuthorizePersonalWorkDto,
 } from "./personal-work.dto.js";
 import * as svc from "./personal-work.service.js";
@@ -128,8 +129,8 @@ export async function updateRequest(
     const currentUserIdVal = (req as any).user?.id || (req as any).user?.pk_user_id;
     if (!currentUserIdVal) return fail(res, "Unauthorized", 401);
 
-    // Partial parse – allow subset of CreatePersonalWorkDto
-    const parsed = CreatePersonalWorkDto.partial().safeParse(req.body);
+    // Partial parse – allow subset of CreatePersonalWorkBaseDto
+    const parsed = CreatePersonalWorkBaseDto.partial().safeParse(req.body);
     if (!parsed.success) return fail(res, parsed.error.message);
 
     const fk_user_id = Number(currentUserIdVal);

@@ -26,7 +26,7 @@ export const acct_group = pgTable('acct_group', {
   grouping: integer('grouping').notNull(),
   prefix: varchar('prefix', { length: 1 }).notNull(),
   dc: varchar('dc', { length: 2 }).notNull(),
-  date_time_stamp: timestamp('date_time_stamp', { mode: 'date' }).notNull(),
+  date_time_stamp: timestamp('date_time_stamp').notNull(),
   fk_user_id: bigint('fk_user_id', { mode: 'number' })
     .notNull()
     .references(() => appUser.pk_user_id),

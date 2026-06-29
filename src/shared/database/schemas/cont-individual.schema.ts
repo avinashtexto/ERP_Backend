@@ -24,7 +24,7 @@ export const cont_individual = pgTable('cont_individual', {
 
   surname: varchar('surname', { length: 25 }).notNull(),
 
-  dob: timestamp('dob', { mode: 'date' }),
+  dob: timestamp('dob'),
 
   photo_url: varchar('photo_url', { length: 500 }),
 
@@ -51,7 +51,7 @@ export const cont_individual = pgTable('cont_individual', {
     onUpdate: 'cascade',
   }),
 
-  anniversary: timestamp('anniversary', { mode: 'date' }),
+  anniversary: timestamp('anniversary'),
 
   ext: varchar('ext', { length: 10 }),
 });

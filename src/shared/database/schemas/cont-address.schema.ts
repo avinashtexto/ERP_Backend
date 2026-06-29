@@ -20,7 +20,7 @@ export const cont_address = pgTable('cont_address', {
 
   pincode: varchar('pincode', { length: 50 }),
 
-  date_time_stamp: timestamp('date_time_stamp', { mode: 'date' }).notNull().defaultNow(),
+  date_time_stamp: timestamp('date_time_stamp').notNull().defaultNow(),
 
   fk_user_id: integer('fk_user_id')
     .notNull()

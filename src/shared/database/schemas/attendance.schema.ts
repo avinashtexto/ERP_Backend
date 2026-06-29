@@ -7,7 +7,7 @@ export const attendanceTable = pgTable('attendance', {
   empName: varchar('emp_name', { length: 100 }),
   atDate: varchar('at_date', { length: 20 }).notNull(), // stored as YYYY-MM-DD
   punchTime: varchar('punch_time', { length: 20 }), // stored as HH:MM:SS
-  punchDatetime: timestamp('punch_datetime', { mode: 'date' }).defaultNow().notNull(),
+  punchDatetime: timestamp('punch_datetime').defaultNow().notNull(),
   device: varchar('device', { length: 50 }).default('ReactNative'),
   punch: varchar('punch', { length: 20 }), // e.g. 'Check IN', 'Check OUT', 'Break', 'Resume'
   manual: varchar('manual', { length: 1 }).default('N'),
@@ -33,7 +33,7 @@ export const gpsAttendanceLogsTable = pgTable('gps_attendance_logs', {
   employeeId: varchar('employee_id', { length: 50 }).notNull(),
   attendanceType: varchar('attendance_type', { length: 20 }).notNull(), // e.g. 'LIVE_TRACKING', 'GEOFENCE'
   attendanceDate: varchar('attendance_date', { length: 20 }).notNull(), // YYYY-MM-DD
-  recordedAt: timestamp('recorded_at', { mode: 'date' }).defaultNow().notNull(),
+  recordedAt: timestamp('recorded_at').defaultNow().notNull(),
   employeeLatitude: numeric('employee_latitude', { precision: 10, scale: 7 }).notNull(),
   employeeLongitude: numeric('employee_longitude', { precision: 10, scale: 7 }).notNull(),
   employeeAddress: text('employee_address'),

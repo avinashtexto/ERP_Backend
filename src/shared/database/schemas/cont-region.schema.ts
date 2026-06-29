@@ -19,7 +19,7 @@ export const contRegion = pgTable(
     region: varchar('region', { length: 30 }).notNull(),
     rate1: numeric('rate1', { precision: 19, scale: 2 }).notNull(),
     rate2: numeric('rate2', { precision: 19, scale: 2 }).notNull(),
-    date_timestamp: timestamp('date_timestamp', { mode: 'date' }).notNull(),
+    date_timestamp: timestamp('date_timestamp').notNull(),
     fk_user_id: integer('fk_user_id')
       .notNull()
       .references(() => appUser.pk_user_id),

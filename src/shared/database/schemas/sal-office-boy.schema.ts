@@ -7,7 +7,7 @@ export const salOfficeBoy = pgTable('sal_office_boy', {
   email: varchar('email', { length: 100 }),
   address: text('address'),
   fk_user_id: integer('fk_user_id'),
-  date_time_stamp: timestamp('date_time_stamp', { mode: 'date' }).defaultNow().notNull(),
+  date_time_stamp: timestamp('date_time_stamp').defaultNow().notNull(),
   last_status: varchar('last_status', { length: 10 }).notNull(),
 });
 

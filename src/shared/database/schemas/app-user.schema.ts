@@ -25,7 +25,7 @@ export const appUser = pgTable('app_user', {
   answer: varchar('answer', { length: 50 }),
   security_question: varchar('security_question', { length: 200 }),
   sal: varchar('sal', { length: 10 }),
-  date_time_stamp: timestamp('date_time_stamp', { mode: 'date' }).defaultNow(),
+  date_time_stamp: timestamp('date_time_stamp').defaultNow(),
   fk_user_id: bigint('fk_user_id', { mode: 'number' }),
   last_status: varchar('last_status', { length: 10 }),
   fk_ec_id: numeric('fk_ec_id', { precision: 18, scale: 0 }),

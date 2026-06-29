@@ -23,7 +23,7 @@ export const cont_city = pgTable(
 
     std_code: varchar('std_code', { length: 10 }).notNull().default(''),
 
-    date_time_stamp: timestamp('date_time_stamp', { mode: 'date' }).notNull().defaultNow(),
+    date_time_stamp: timestamp('date_time_stamp').notNull().defaultNow(),
 
     fk_user_id: integer('fk_user_id')
       .notNull()
