@@ -42,6 +42,7 @@ class ResponseBuilder {
 
   fail(): this {
     this.isSuccess = false;
+    this.message = this.message === 'Success' ? 'Error' : this.message;
     this.data = null;
     this.meta = null;
     return this;

@@ -50,21 +50,28 @@ export const authenticate = async (
     // Check database to ensure user exists
     let user: any;
     if (decoded.role === 'sal_employee') {
+      if (!decoded.fk_emp_id) {
+        return res.build
+          .withStatus(401)
+          .withError('UNAUTHORIZED', 'Employee ID missing from token')
+          .fail()
+          .send();
+      }
       const employees = await db
         .select()
         .from(salEmployee)
-        .where(eq(salEmployee.pk_emp_id, decoded.pk_user_id))
+        .where(eq(salEmployee.pk_emp_id, decoded.fk_emp_id!))
         .limit(1);
       user = employees[0];
       if (user) {
-        user.pk_user_id = user.pk_emp_id;
+        user.pk_user_id = decoded.id; // ensure pk_user_id is set
         user.fk_emp_id = user.pk_emp_id;
       }
     } else {
       const users = await db
         .select()
         .from(appUser)
-        .where(eq(appUser.pk_user_id, decoded.pk_user_id))
+        .where(eq(appUser.pk_user_id, decoded.id))
         .limit(1);
       user = users[0];
     }
