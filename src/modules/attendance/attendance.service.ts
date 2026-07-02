@@ -1,7 +1,6 @@
 import { eq, sql, and, desc, asc, or } from 'drizzle-orm';
 import {
   attendanceTable,
-  attendanceLocationsTable,
   gpsAttendanceLogsTable,
   appUser,
   salEmployee,
@@ -104,46 +103,57 @@ export async function resolveEmployeeIdentity(userId: string | number): Promise<
 }
 
 // Helper: Resolve assigned office location for employee
-export async function resolveOfficeLocation(locationId: number | null): Promise<any | null> {
-  if (locationId) {
-    const dbLocations = await db
-      .select()
-      .from(attendanceLocationsTable)
-      .where(
-        and(
-          eq(attendanceLocationsTable.id, locationId),
-          eq(attendanceLocationsTable.isActive, true),
-        ),
-      )
+export async function resolveOfficeLocation(locationId: number | null, empId?: number | string | null): Promise<any | null> {
+  if (empId) {
+    const structRows = await db
+      .select({
+        latitude: sal_structure.latitude,
+        longitude: sal_structure.longitude,
+        radius: sal_structure.radius,
+      })
+      .from(sal_structure)
+      .where(eq(sal_structure.fk_emp_id, String(empId)))
+      .orderBy(desc(sal_structure.sal_start))
       .limit(1);
-    if (dbLocations.length > 0) {
-      const loc = dbLocations[0]!;
+
+    const firstRow = structRows[0];
+    if (firstRow && firstRow.latitude && firstRow.longitude) {
       return {
-        locationId: loc.id,
-        name: loc.locationName,
-        latitude: Number(loc.latitude),
-        longitude: Number(loc.longitude),
-        radius: loc.allowedRadius ? Number(loc.allowedRadius) : 25,
-        address: loc.address,
+        locationId: locationId || 1,
+        name: "Assigned Office",
+        latitude: Number(firstRow.latitude),
+        longitude: Number(firstRow.longitude),
+        radius: firstRow.radius ? Number(firstRow.radius) : 25.0,
+        address: "Assigned Office Location",
       };
     }
   }
 
-  // Fallback: If specific ID is not active or found, get the first active location from database
-  const activeLocations = await db
-    .select()
-    .from(attendanceLocationsTable)
-    .where(eq(attendanceLocationsTable.isActive, true))
+  // Fallback: if no specific coords, grab the first available active coordinates
+  const fallbackRows = await db
+    .select({
+      latitude: sal_structure.latitude,
+      longitude: sal_structure.longitude,
+      radius: sal_structure.radius,
+    })
+    .from(sal_structure)
+    .where(
+      and(
+        sql`${sal_structure.latitude} IS NOT NULL`,
+        sql`${sal_structure.longitude} IS NOT NULL`
+      )
+    )
     .limit(1);
-  if (activeLocations.length > 0) {
-    const loc = activeLocations[0]!;
+
+  const firstFallback = fallbackRows[0];
+  if (firstFallback && firstFallback.latitude && firstFallback.longitude) {
     return {
-      locationId: loc.id,
-      name: loc.locationName,
-      latitude: Number(loc.latitude),
-      longitude: Number(loc.longitude),
-      radius: loc.allowedRadius ? Number(loc.allowedRadius) : 25,
-      address: loc.address,
+      locationId: 1,
+      name: "Default Office",
+      latitude: Number(firstFallback.latitude),
+      longitude: Number(firstFallback.longitude),
+      radius: firstFallback.radius ? Number(firstFallback.radius) : 25.0,
+      address: "Default Office Location",
     };
   }
 
@@ -152,19 +162,25 @@ export async function resolveOfficeLocation(locationId: number | null): Promise<
 
 // Helper: Resolve all active office locations in system
 export async function resolveAllOffices(): Promise<any[]> {
-  const dbLocations = await db
-    .select()
-    .from(attendanceLocationsTable)
-    .where(eq(attendanceLocationsTable.isActive, true));
+  const rows = await db
+    .select({
+      latitude: sal_structure.latitude,
+      longitude: sal_structure.longitude,
+      radius: sal_structure.radius,
+    })
+    .from(sal_structure)
+    .groupBy(sal_structure.latitude, sal_structure.longitude, sal_structure.radius);
 
-  return dbLocations.map((loc) => ({
-    locationId: loc.id,
-    name: loc.locationName,
-    latitude: Number(loc.latitude),
-    longitude: Number(loc.longitude),
-    radius: loc.allowedRadius ? Number(loc.allowedRadius) : 25,
-    address: loc.address,
-  }));
+  return rows
+    .filter(r => r.latitude && r.longitude)
+    .map((r, idx) => ({
+      locationId: idx + 1,
+      name: `Location ${idx + 1}`,
+      latitude: Number(r.latitude),
+      longitude: Number(r.longitude),
+      radius: r.radius ? Number(r.radius) : 25.0,
+      address: `Location ${idx + 1}`,
+    }));
 }
 
 // Check if double punch exists today
@@ -251,7 +267,7 @@ export async function markAttendance(
   const matchedEmp = empRows[0];
   const assignedLocationId = matchedEmp?.fk_set_id ? Number(matchedEmp.fk_set_id) : 1; // Default to 1 (Texto MBP Office)
 
-  let resolvedOffice = await resolveOfficeLocation(assignedLocationId);
+  let resolvedOffice = await resolveOfficeLocation(assignedLocationId, identity.pkUserId);
   let matchingRule = 'FIXED_OFFICE_GEOFENCE';
 
   if (!resolvedOffice) {
@@ -470,7 +486,7 @@ export async function recordLiveLocation(
   const matchedEmp = empRows[0];
   const assignedLocationId = matchedEmp?.fk_set_id ? Number(matchedEmp.fk_set_id) : 1; // Default to 1 (Texto MBP Office)
 
-  const resolvedOffice = await resolveOfficeLocation(assignedLocationId);
+  const resolvedOffice = await resolveOfficeLocation(assignedLocationId, identity.pkUserId);
   if (!resolvedOffice) {
     throw new GpsAttendanceError(
       'Office location config not found in database',
@@ -965,7 +981,7 @@ export async function getCurrentStatus(employeeId: string): Promise<any> {
   const matchedEmp = empRows[0];
   const assignedLocationId = matchedEmp?.fk_set_id ? Number(matchedEmp.fk_set_id) : 1; // Default to 1 (Texto MBP Office)
 
-  const office = await resolveOfficeLocation(assignedLocationId);
+  const office = await resolveOfficeLocation(assignedLocationId, identity.pkUserId);
   if (!office) {
     throw new GpsAttendanceError(
       'Office location config not found in database',
@@ -996,7 +1012,7 @@ export async function getCurrentStatus(employeeId: string): Promise<any> {
 export async function getAttendanceConfig(userId: string | number): Promise<any> {
   const identity = await resolveEmployeeIdentity(userId);
   const assignedLocationId = 1; // default to first office
-  const office = await resolveOfficeLocation(assignedLocationId);
+  const office = await resolveOfficeLocation(assignedLocationId, identity.pkUserId);
   if (!office) {
     throw new GpsAttendanceError(
       'Office location config not found in database',
@@ -1023,34 +1039,35 @@ export async function getAttendanceConfig(userId: string | number): Promise<any>
 // Fetch all geolocations from database
 export async function getAllGeolocations(): Promise<any> {
   try {
-    const locations = await db
+    const rows = await db
       .select({
-        pkGeoId: attendanceLocationsTable.id,
-        OfficeName: attendanceLocationsTable.locationName,
-        fkHLId: attendanceLocationsTable.fkHLId,
-        Latitude: attendanceLocationsTable.latitude,
-        Longitude: attendanceLocationsTable.longitude,
-        RadiusMeters: attendanceLocationsTable.allowedRadius,
-        IsActive: attendanceLocationsTable.isActive,
-        CreatedAt: attendanceLocationsTable.createdAt,
-        officeName: attendanceLocationsTable.locationName,
+        latitude: sal_structure.latitude,
+        longitude: sal_structure.longitude,
+        radius: sal_structure.radius,
       })
-      .from(attendanceLocationsTable)
-      .orderBy(attendanceLocationsTable.id);
+      .from(sal_structure)
+      .groupBy(sal_structure.latitude, sal_structure.longitude, sal_structure.radius);
 
-    const geolocations = locations.map(loc => ({
-      ...loc,
-      Latitude: Number(loc.Latitude),
-      Longitude: Number(loc.Longitude),
-      RadiusMeters: Number(loc.RadiusMeters),
-    }));
+    const geolocations = rows
+      .filter((r): r is { latitude: string; longitude: string; radius: string | null } => r.latitude !== null && r.longitude !== null)
+      .map((r, idx) => ({
+        pkGeoId: idx + 1,
+        OfficeName: `Location ${idx + 1}`,
+        fkHLId: null,
+        Latitude: Number(r.latitude),
+        Longitude: Number(r.longitude),
+        RadiusMeters: r.radius ? Number(r.radius) : 25.0,
+        IsActive: true,
+        CreatedAt: new Date().toISOString(),
+        officeName: `Location ${idx + 1}`,
+      }));
 
     return {
       success: true,
       geolocations,
     };
   } catch (error) {
-    console.error('Failed to fetch geolocations from database:', error);
+    console.error('Failed to fetch geolocations:', error);
     throw error;
   }
 }

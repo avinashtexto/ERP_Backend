@@ -96,8 +96,8 @@ export const sal_structure = pgTable(
     longitude: numeric("longitude", { precision: 18, scale: 6 }),
     tds_deduct: numeric("tds_deduct", { precision: 18, scale: 0 }).notNull().default("0"),
     m_deduction: numeric("m_deduction", { precision: 18, scale: 2 }),
-    ded_description: varchar("ded_description", { length: 100 }),
     fk_des_id: varchar("fk_des_id", { length: 5 }),
+    radius: numeric("radius", { precision: 10, scale: 2 }),
   },
   (t) => [
     index('idx_sal_structure_emp').on(t.fk_emp_id),

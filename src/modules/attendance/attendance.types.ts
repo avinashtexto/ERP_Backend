@@ -1,14 +1,24 @@
 import {
   attendanceTable,
-  attendanceLocationsTable,
   gpsAttendanceLogsTable,
 } from '@/shared/database/schemas/attendance.schema.js';
 
 export type Attendance = typeof attendanceTable.$inferSelect;
 export type NewAttendance = typeof attendanceTable.$inferInsert;
 
-export type AttendanceLocation = typeof attendanceLocationsTable.$inferSelect;
-export type NewAttendanceLocation = typeof attendanceLocationsTable.$inferInsert;
+export type AttendanceLocation = {
+  id: number;
+  locationName: string;
+  latitude: string;
+  longitude: string;
+  address: string | null;
+  allowedRadius: string | null;
+  locationType: string | null;
+  isActive: boolean;
+  fkHLId: number | null;
+  createdAt: string | Date | null;
+};
+export type NewAttendanceLocation = Partial<AttendanceLocation>;
 
 export type GpsAttendanceLog = typeof gpsAttendanceLogsTable.$inferSelect;
 export type NewGpsAttendanceLog = typeof gpsAttendanceLogsTable.$inferInsert;
