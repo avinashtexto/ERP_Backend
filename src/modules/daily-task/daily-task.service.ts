@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, lte, ilike } from 'drizzle-orm';
 import { salOfficeBoyTask } from '@/shared/database/schemas/index.js';
 import type { DailyTask, CreateDailyTaskDto, UpdateDailyTaskDto } from './daily-task.types.js';
 import { db } from '@/config/db.config.js';
@@ -6,10 +6,14 @@ import { db } from '@/config/db.config.js';
 export async function getDailyTasks(filters: {
   fk_ob_id?: number;
   status?: 'Pending' | 'Canceled' | 'Finished';
+  priority?: 'High' | 'Medium' | 'Low';
+  timeframe?: '7days' | '1month' | 'custom';
+  startDate?: string;
+  endDate?: string;
   page?: number;
   limit?: number;
 }): Promise<{ data: DailyTask[]; total: number }> {
-  const { fk_ob_id, status, page = 1, limit = 10 } = filters;
+  const { fk_ob_id, status, priority, timeframe, startDate, endDate, page = 1, limit = 10 } = filters;
   const offset = (page - 1) * limit;
 
   const conditions = [];
@@ -18,6 +22,30 @@ export async function getDailyTasks(filters: {
   }
   if (status) {
     conditions.push(eq(salOfficeBoyTask.status, status));
+  }
+  if (priority) {
+    conditions.push(ilike(salOfficeBoyTask.priority, priority));
+  }
+
+  // Handle timeframe
+  const now = new Date();
+  if (timeframe === '7days') {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 7);
+    conditions.push(gte(salOfficeBoyTask.task_date, sevenDaysAgo));
+  } else if (timeframe === '1month') {
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(now.getMonth() - 1);
+    conditions.push(gte(salOfficeBoyTask.task_date, oneMonthAgo));
+  } else if (timeframe === 'custom') {
+    if (startDate) {
+      conditions.push(gte(salOfficeBoyTask.task_date, new Date(startDate)));
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      conditions.push(lte(salOfficeBoyTask.task_date, end));
+    }
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -39,7 +67,7 @@ export async function getDailyTasks(filters: {
 
     const total = Number(totalResult[0]?.count || 0);
 
-    // Cast status to literal type and ensure all required fields
+    // Cast status and priority to literal types and ensure all required fields
     const typedData = data.map(row => ({
       pk_obt_id: row.pk_obt_id!,
       task: row.task!,
@@ -47,6 +75,12 @@ export async function getDailyTasks(filters: {
       task_time: row.task_time!,
       remarks: row.remarks,
       status: row.status as 'Pending' | 'Canceled' | 'Finished',
+      priority: (() => {
+        const p = String(row.priority || 'Medium').toLowerCase();
+        if (p === 'high') return 'High' as const;
+        if (p === 'low') return 'Low' as const;
+        return 'Medium' as const;
+      })(),
       fk_ob_id: row.fk_ob_id!,
     }));
 
@@ -77,6 +111,7 @@ export async function getDailyTaskById(id: number): Promise<DailyTask | null> {
     task_time: result[0].task_time,
     remarks: result[0].remarks,
     status: result[0].status as 'Pending' | 'Canceled' | 'Finished',
+    priority: (result[0].priority as 'High' | 'Medium' | 'Low') || 'Medium',
     fk_ob_id: result[0].fk_ob_id!,
   };
 
@@ -92,6 +127,7 @@ export async function createDailyTask(dto: CreateDailyTaskDto): Promise<DailyTas
         task_date: dto.task_date,
         task_time: dto.task_time,
         status: dto.status,
+        priority: dto.priority || 'Medium',
         fk_ob_id: dto.fk_ob_id,
         remarks: dto.remarks,
       })
@@ -108,12 +144,17 @@ export async function createDailyTask(dto: CreateDailyTaskDto): Promise<DailyTas
       task_time: result.task_time!,
       remarks: result.remarks,
       status: result.status as 'Pending' | 'Canceled' | 'Finished',
+      priority: (() => {
+        const p = String(result.priority || 'Medium').toLowerCase();
+        if (p === 'high') return 'High' as const;
+        if (p === 'low') return 'Low' as const;
+        return 'Medium' as const;
+      })(),
       fk_ob_id: result.fk_ob_id!,
     };
 
     return task;
   } catch (error: any) {
-    // If table doesn't exist, throw a clear error
     if (error.message && error.message.includes('sal_office_boy_task')) {
       throw new Error('sal_office_boy_task table not found in database');
     }
@@ -138,12 +179,17 @@ export async function updateDailyTask(id: number, dto: UpdateDailyTaskDto): Prom
       task_time: result.task_time!,
       remarks: result.remarks,
       status: result.status as 'Pending' | 'Canceled' | 'Finished',
+      priority: (() => {
+        const p = String(result.priority || 'Medium').toLowerCase();
+        if (p === 'high') return 'High' as const;
+        if (p === 'low') return 'Low' as const;
+        return 'Medium' as const;
+      })(),
       fk_ob_id: result.fk_ob_id!,
     };
 
     return task;
   } catch (error: any) {
-    // If table doesn't exist, return null
     if (error.message && error.message.includes('sal_office_boy_task')) {
       console.warn('sal_office_boy_task table not found, returning null');
       return null;
@@ -161,7 +207,6 @@ export async function deleteDailyTask(id: number): Promise<boolean> {
 
     return result.length > 0;
   } catch (error: any) {
-    // If table doesn't exist, return false
     if (error.message && error.message.includes('sal_office_boy_task')) {
       console.warn('sal_office_boy_task table not found, returning false');
       return false;

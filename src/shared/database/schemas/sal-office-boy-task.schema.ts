@@ -9,6 +9,7 @@ export const salOfficeBoyTask = pgTable('sal_office_boy_task', {
   task_time: timestamp('task_time').notNull(),
   remarks: varchar('remarks', { length: 500 }),
   status: varchar('status', { length: 20 }).notNull().default('Pending'),
+  priority: varchar('priority', { length: 20 }).notNull().default('Medium'),
 });
 
 export type SalOfficeBoyTask = typeof salOfficeBoyTask.$inferSelect;

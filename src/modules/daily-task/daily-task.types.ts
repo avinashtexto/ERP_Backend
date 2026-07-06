@@ -5,6 +5,7 @@ export interface DailyTask {
   task_time: Date;
   remarks?: string | null;
   status: 'Pending' | 'Canceled' | 'Finished';
+  priority: 'High' | 'Medium' | 'Low';
   fk_ob_id: number;
 }
 
@@ -14,6 +15,7 @@ export interface CreateDailyTaskDto {
   task_time: Date;
   remarks?: string | null | undefined;
   status: 'Pending' | 'Canceled' | 'Finished';
+  priority?: 'High' | 'Medium' | 'Low';
   fk_ob_id: number;
 }
 
@@ -23,5 +25,6 @@ export interface UpdateDailyTaskDto {
   task_time?: Date;
   remarks?: string;
   status?: 'Pending' | 'Canceled' | 'Finished';
+  priority?: 'High' | 'Medium' | 'Low';
   fk_ob_id?: number;
 }

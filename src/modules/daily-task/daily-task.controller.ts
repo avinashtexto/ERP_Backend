@@ -23,14 +23,25 @@ export async function listDailyTasks(req: AuthenticatedRequest, res: Response): 
     const filters: {
       fk_ob_id?: number;
       status?: 'Pending' | 'Canceled' | 'Finished';
+      priority?: 'High' | 'Medium' | 'Low';
+      timeframe?: '7days' | '1month' | 'custom';
+      startDate?: string;
+      endDate?: string;
       page?: number;
       limit?: number;
-    } = {
-      page: validated.page,
-      limit: validated.limit,
-    };
+    } = {};
+
+    if (validated.page !== undefined) filters.page = validated.page;
+    if (validated.limit !== undefined) filters.limit = validated.limit;
+    if (validated.priority !== undefined) filters.priority = validated.priority;
+    if (validated.timeframe !== undefined) filters.timeframe = validated.timeframe;
+    if (validated.startDate !== undefined) filters.startDate = validated.startDate;
+    if (validated.endDate !== undefined) filters.endDate = validated.endDate;
+
     if (validated.fk_ob_id !== undefined) {
       filters.fk_ob_id = typeof validated.fk_ob_id === 'string' ? Number(validated.fk_ob_id) : validated.fk_ob_id;
+    } else if (req.user?.fk_emp_id) {
+      filters.fk_ob_id = Number(req.user.fk_emp_id);
     }
     if (validated.status) {
       filters.status = validated.status;
