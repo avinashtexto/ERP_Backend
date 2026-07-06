@@ -113,6 +113,8 @@ export interface EmployeeLeaveBalance {
   tot_sick_leave: number;
   tot_paid_casual: number;
   tot_unpaid_casual: number;
+  bal_paid_leave?: number;
+  tot_paid_leave?: number;
 }
 
 /** Leave type dropdown option */

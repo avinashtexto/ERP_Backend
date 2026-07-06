@@ -31,6 +31,7 @@ export const sal_leave_request = pgTable(
 
     reason: varchar('reason', { length: 100 }),
     remarks: varchar('remarks', { length: 100 }),
+    attachment_path: varchar('attachment_path', { length: 500 }),
 
     // Audit
     date_timestamp: timestamp('date_timestamp'),

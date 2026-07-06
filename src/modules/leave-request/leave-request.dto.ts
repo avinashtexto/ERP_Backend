@@ -126,6 +126,7 @@ const LeaveRequestBaseDto = z.object({
 
   reason: z.string().max(100).min(1, 'Reason is required'),
   remarks: z.string().max(100).optional().default(''),
+  attachment_path: z.string().max(500).optional(),
 
   details: z.array(LeaveDetailLineDto).min(1, 'At least one leave day is required'),
 });

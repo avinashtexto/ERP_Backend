@@ -294,6 +294,7 @@ export async function createLeaveRequest(
       absent: dto.absent,
       reason: dto.reason,
       remarks: dto.remarks,
+      attachment_path: dto.attachment_path,
       date_timestamp: new Date(),
       fk_user_id,
       last_status: 'Added',
@@ -645,6 +646,19 @@ export async function getEmployeeLeaveBalance(
     );
   }
 
+  // ── Paid Leave ────────────────────────────────────────────
+  const tot_paid_leave = 12;
+  const [paid_used_row] = await db
+    .select({ total: sql<number>`COALESCE(SUM(paid_leave::numeric), 0)` })
+    .from(sal_leave_request)
+    .where(
+      and(
+        eq(sal_leave_request.fk_emp_id, Number(fk_emp_id)),
+        eq(sal_leave_request.last_status, 'Approved'),
+      )
+    );
+  const bal_paid_leave = Math.max(0, tot_paid_leave - Number(paid_used_row?.total ?? 0));
+
   const [emp_row] = await db
     .select({ employee: sal_employee.employee })
     .from(sal_employee)
@@ -666,6 +680,8 @@ export async function getEmployeeLeaveBalance(
       tot_sick_leave: 0,
       tot_paid_casual: 0,
       tot_unpaid_casual: 0,
+      bal_paid_leave: 0,
+      tot_paid_leave: 0,
     };
   }
 
@@ -682,6 +698,8 @@ export async function getEmployeeLeaveBalance(
     tot_sick_leave: sl_entitlement,
     tot_paid_casual: cl_entitlement,
     tot_unpaid_casual: ucl_entitlement,
+    bal_paid_leave,
+    tot_paid_leave,
   };
 }
 
@@ -858,4 +876,70 @@ export async function updateLeaveBalanceForAllEmployees(
     updated,
     total: employees.length,
   };
+}
+
+export async function cancelLeaveRequest(pk_lr_id: number, fk_user_id: number): Promise<{ success: boolean; message: string }> {
+  return await db.transaction(async (tx) => {
+    // 1. Fetch the leave request
+    const [lr] = await tx
+      .select()
+      .from(sal_leave_request)
+      .where(eq(sal_leave_request.pk_lr_id, pk_lr_id))
+      .limit(1);
+
+    if (!lr) {
+      throw new Error('Leave request not found');
+    }
+
+    // 2. Check current status
+    // Pending status: authorized is false, and it isn't already cancelled or cancellation pending
+    const isPending = !lr.authorize && lr.last_status !== 'Cancelled' && lr.last_status !== 'Cancellation Pending';
+    const isApproved = lr.authorize && lr.accepted === 'Accept';
+
+    if (isPending) {
+      await tx
+        .update(sal_leave_request)
+        .set({
+          last_status: 'Cancelled',
+          date_timestamp: new Date(),
+          fk_user_id,
+        })
+        .where(eq(sal_leave_request.pk_lr_id, pk_lr_id));
+
+      await _insert_notification(tx, {
+        form_name: 'Leave Request',
+        n_id: pk_lr_id,
+        edit_mode: 3, // Cancellation mode
+        fk_user_id,
+        fk_set_id: '',
+        authorize: false,
+        announcement: `Leave request ${lr.request_no} cancelled by employee`,
+      });
+
+      return { success: true, message: 'Leave request cancelled successfully.' };
+    } else if (isApproved) {
+      await tx
+        .update(sal_leave_request)
+        .set({
+          last_status: 'Cancellation Pending',
+          date_timestamp: new Date(),
+          fk_user_id,
+        })
+        .where(eq(sal_leave_request.pk_lr_id, pk_lr_id));
+
+      await _insert_notification(tx, {
+        form_name: 'Leave Request',
+        n_id: pk_lr_id,
+        edit_mode: 3,
+        fk_user_id,
+        fk_set_id: '',
+        authorize: false,
+        announcement: `Cancellation request for approved leave ${lr.request_no} submitted by employee`,
+      });
+
+      return { success: true, message: 'Cancellation request sent to manager for approval.' };
+    } else {
+      throw new Error('Only Pending or Approved leave requests can be cancelled.');
+    }
+  });
 }

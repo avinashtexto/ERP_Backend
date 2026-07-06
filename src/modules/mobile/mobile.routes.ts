@@ -36,6 +36,25 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+const leaveStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.resolve(process.cwd(), 'public/uploads/leaves');
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    } catch (err) {
+      cb(err as Error, uploadDir);
+    }
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const uniqueName = `leave_${Date.now()}_${Math.random().toString(36).substring(2, 9)}${ext}`;
+    cb(null, uniqueName);
+  }
+});
+
+const leaveUpload = multer({ storage: leaveStorage });
+
 /**
  * Mobile API Router
  * All mobile-specific endpoints are prefixed with /mobile
@@ -887,6 +906,18 @@ router.get('/leave-requests/:id/report', authenticate, leaveRequestController.ge
  *         description: Request created
  */
 router.post('/leave-requests', authenticate, leaveRequestController.createLeaveRequest);
+router.post(
+  '/leave-requests/upload',
+  authenticate,
+  leaveUpload.single('file'),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded.' });
+    }
+    const relativePath = `/uploads/leaves/${req.file.filename}`;
+    return res.status(200).json({ success: true, data: { path: relativePath } });
+  }
+);
 
 /**
  * @openapi
@@ -944,6 +975,7 @@ router.put('/leave-requests/:id', authenticate, leaveRequestController.updateLea
  *         description: Request deleted
  */
 router.delete('/leave-requests/:id', authenticate, leaveRequestController.deleteLeaveRequest);
+router.post('/leave-requests/:id/cancel', authenticate, leaveRequestController.cancelLeaveRequest);
 
 /**
  * @openapi

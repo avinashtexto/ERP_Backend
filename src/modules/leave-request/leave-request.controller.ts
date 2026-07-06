@@ -34,7 +34,16 @@ function ok<T>(res: Response, data: T, status = 200) {
 }
 
 function fail(res: Response, message: string, status = 400) {
-  return res.status(status).json({ success: false, message });
+  let displayMessage = message;
+  try {
+    const parsed = JSON.parse(message);
+    if (Array.isArray(parsed) && parsed[0]?.message) {
+      displayMessage = parsed.map((item: any) => `${item.path?.join('.') || 'field'}: ${item.message}`).join(', ');
+    }
+  } catch {
+    // keep original string if it is not JSON
+  }
+  return res.status(status).json({ success: false, message: displayMessage });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -376,6 +385,19 @@ export async function getLeaveReportById(
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=leave_request_${id}_${current_month.replace(' ', '_')}.pdf`);
     res.send(pdf_buffer);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function cancelLeaveRequest(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id_parsed = IdParamDto.safeParse(req.params);
+    if (!id_parsed.success) return fail(res, 'Invalid ID');
+
+    const fk_user_id = Number(((req as any).user?.id || (req as any).user?.pk_user_id) ?? 1);
+    const result = await svc.cancelLeaveRequest(id_parsed.data.id, fk_user_id);
+    return ok(res, result);
   } catch (err) {
     next(err);
   }
