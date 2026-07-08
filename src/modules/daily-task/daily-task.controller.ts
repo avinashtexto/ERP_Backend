@@ -1,4 +1,7 @@
 import type { Request, Response } from 'express';
+import { db } from '../../config/db.config.js';
+import { salOfficeBoy } from '../../shared/database/schemas/index.js';
+import { eq } from 'drizzle-orm';
 
 import {
   createDailyTaskSchema,
@@ -8,13 +11,26 @@ import {
 import * as service from './daily-task.service.js';
 import type { UpdateDailyTaskDto } from './daily-task.types.js';
 
-interface AuthenticatedRequest extends Request {
+interface AuthenticatedRequest extends Omit<Request, 'user'> {
   user?: {
     id: string | number;
     username?: string;
     role?: string;
     fk_emp_id?: string | number;
   };
+}
+
+async function getOfficeBoyIdForUser(reqUser?: any): Promise<number | undefined> {
+  if (!reqUser) return undefined;
+  const realUserId = reqUser.role === 'sal_employee' ? ((reqUser as any).fk_user_id ?? reqUser.id) : reqUser.id;
+  if (!realUserId) return undefined;
+
+  const [ob] = await db
+    .select({ pk_ob_id: salOfficeBoy.pk_ob_id })
+    .from(salOfficeBoy)
+    .where(eq(salOfficeBoy.fk_user_id, Number(realUserId)))
+    .limit(1);
+  return ob?.pk_ob_id;
 }
 
 export async function listDailyTasks(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -40,8 +56,13 @@ export async function listDailyTasks(req: AuthenticatedRequest, res: Response): 
 
     if (validated.fk_ob_id !== undefined) {
       filters.fk_ob_id = typeof validated.fk_ob_id === 'string' ? Number(validated.fk_ob_id) : validated.fk_ob_id;
-    } else if (req.user?.fk_emp_id) {
-      filters.fk_ob_id = Number(req.user.fk_emp_id);
+    } else if (req.user) {
+      const obId = await getOfficeBoyIdForUser(req.user);
+      if (obId) {
+        filters.fk_ob_id = obId;
+      } else if (req.user?.fk_emp_id) {
+        filters.fk_ob_id = Number(req.user.fk_emp_id);
+      }
     }
     if (validated.status) {
       filters.status = validated.status;
@@ -87,8 +108,13 @@ export async function getDailyTask(req: Request, res: Response): Promise<void> {
 export async function createDailyTask(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const bodyToValidate = { ...req.body };
-    if (!bodyToValidate.fk_ob_id && req.user?.fk_emp_id) {
-      bodyToValidate.fk_ob_id = typeof req.user.fk_emp_id === 'string' ? Number(req.user.fk_emp_id) : req.user.fk_emp_id;
+    if (!bodyToValidate.fk_ob_id && req.user) {
+      const obId = await getOfficeBoyIdForUser(req.user);
+      if (obId) {
+        bodyToValidate.fk_ob_id = obId;
+      } else if (req.user?.fk_emp_id) {
+        bodyToValidate.fk_ob_id = typeof req.user.fk_emp_id === 'string' ? Number(req.user.fk_emp_id) : req.user.fk_emp_id;
+      }
     } else if (bodyToValidate.fk_ob_id) {
       bodyToValidate.fk_ob_id = typeof bodyToValidate.fk_ob_id === 'string' ? Number(bodyToValidate.fk_ob_id) : bodyToValidate.fk_ob_id;
     }
